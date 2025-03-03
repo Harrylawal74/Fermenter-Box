@@ -13,11 +13,16 @@ const int onButtonPin = 2;
 const int phButtonPin = 3;
 
 // add button pin for tare button 
-const int tareButtonPin 4;
+const int tareButtonPin = 4;
 
 //add button pin for weight percentage change button
 const int weightPercentButtonPin = 5;
 
+//variable for reading button states
+int onButtonState = 0;
+int phButtonState = 0;
+int tareButtonState = 0;
+int weightPercentButtonState = 0;
 
 
 
