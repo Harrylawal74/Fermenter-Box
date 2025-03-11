@@ -18,20 +18,64 @@ const int tareButtonPin = 4;
 //add button pin for weight percentage change button
 const int weightPercentButtonPin = 5;
 
+/*
 //variable for reading button states
 int onButtonState = 0;
 int phButtonState = 0;
 int tareButtonState = 0;
 int weightPercentButtonState = 0;
+*/
 
-
+byte onButtonPrevState = 0;
+bool onButtonReleased = false;
+unsigned long onButtonPressedAt = 0;
 
 void setup() {
-  // put your setup code here, to run once:
+  pinMode(onButtonPin, INPUT_PULLUP);
 
 }
 
 void loop() {
-  if 
+  onButton();
+}
 
+
+
+void onButton() {
+  //reads the state of the on button (is it pushed down or not?)
+  int onButtonState = digitalRead(onButtonPin);
+
+  // if the button has changed state then checks whether it has been pressed and records the time it was pressed
+  if (onButtonState != onButtonPrevState) {
+    if (onButtonState == HIGH) {
+      onButtonReleased = false;
+      onButtonPressedAt = millis();
+    }
+    else {
+      onButtonReleaseed = true;
+    }
+    onButtonPrevState = onButtonState;
+  }
+
+  if (onButtonReleased == true) {
+    after5sec();
+    onButtonReleased = false;
+    onButtonPressedAt = 0;
+  }
+}
+
+
+
+
+
+void after5sec() {
+  long diff = millis() - onButonPressedAt;
+  if (diff > 5000) {
+    if (onButtonState == LOW){
+      digitalWrite(onButtonPin, HIGH);
+    }
+    else {
+      digitalWrite(onButtonPin, LOW);
+    }
+  }
 }
