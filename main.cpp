@@ -86,3 +86,17 @@ void after5sec() {
     
   }
 }
+
+
+
+const int tareWeightPin = 6;
+byte tareButtonState = 0;
+
+void tareWeight() {
+  int tareState = digitalread(tareWeightPin);
+
+  if (tareState != tareButtonState){
+    //reset weight
+  }
+  
+}
