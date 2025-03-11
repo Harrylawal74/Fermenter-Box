@@ -69,6 +69,7 @@ void onButton() {
 
 
 void after5sec() {
+  //if the button is pressed for 5+ seconds then the box is turned on/off
   long diff = millis() - onButonPressedAt;
   if (diff > 5000) {
     if (onButtonState == LOW){
@@ -77,5 +78,11 @@ void after5sec() {
     else {
       digitalWrite(onButtonPin, LOW);
     }
+  }
+
+  if (diff < 2000) {
+    unsigned long timeSinceStart = 0;
+
+    
   }
 }
