@@ -1,102 +1,155 @@
-#include <LiquidCrystal.h>
-#include "HX711.h"
-#include "<math.h>"
-
-// set the LCD address to 0x64 for a 20 chars and 4 line display
-LiquidCrystal_I2C lcd(0x64,20,4);
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+#include "HX711.h" // Library for analog HX711
 
 
-// add button pin for I/O button 
-const int onButtonPin = 2;
 
-// add button pin for pH sensor calibrator button 
-const int phButtonPin = 3;
+// Pin Definitions
+#define PH_SENSOR_PIN A0        // Analog pin connected to pH sensor
+#define VOLTAGE_REF 5.0         // Reference voltage for ADC
+#define ADC_RESOLUTION 1024.0   // 10-bit ADC resolution
+#define DHTPIN 10               // Pin connected to the DHT11 data pin
+#define DHTTYPE DHT11           // DHT11 sensor type
+#define HX711_DT_PIN 4          // Data pin for HX711
+#define HX711_SCK_PIN 5         // Clock pin for HX711
+#define PUMP_PIN 9              // Pin to control the pump
+#define TARE_BUTTON_PIN 7       // Pin for tare button
+#define TIMER_BUTTON_PIN 8      // Pin for starting the day counter
 
-// add button pin for tare button 
-const int tareButtonPin = 4;
+// Calibration Constants
+#define CALIBRATION_OFFSET 0.00 // Adjust based on calibration
+#define HX711_CALIBRATION_FACTOR 212.389541 // Corrected calibration factor
 
-//add button pin for weight percentage change button
-const int weightPercentButtonPin = 5;
+// Timer Variables
+unsigned long lastPumpActivation = 0;  // Track last pump activation
+const unsigned long PUMP_INTERVAL = 86400000; // 24 hours in milliseconds
+const unsigned long PUMP_DURATION = 5000;  // Pump runs for 5 seconds
+bool pumpRunning = false; // Flag to track pump state
 
-/*
-//variable for reading button states
-int onButtonState = 0;
-int phButtonState = 0;
-int tareButtonState = 0;
-int weightPercentButtonState = 0;
-*/
+// Stabilization Variables
+const float MINIMUM_WEIGHT = 2.0; // Minimum detectable weight threshold
 
-byte onButtonPrevState = 0;
-bool onButtonReleased = false;
-unsigned long onButtonPressedAt = 0;
+// Day Counter Variables
+unsigned long timerStart = 0; // Stores the start time of the timer
+bool timerRunning = false; // Flag to track timer state
+
+// Initialize Sensors
+DHT dht(DHTPIN, DHTTYPE);
+HX711 scale;
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+// Function to calculate pH from voltage
+float calculatePH(float voltage) {
+  float sensitivity = 3.5;
+  return 7.0 + ((2.5 - voltage) / sensitivity);
+}
 
 void setup() {
-  pinMode(onButtonPin, INPUT_PULLUP);
+  Serial.begin(9600);
+  
+  // LCD Setup
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(5, 0);
+  lcd.print("Fervere");
+  lcd.setCursor(4,1);
+  lcd.print("Streamlined");
+  lcd.setCursor(4,2);
+  lcd.print("Fermenting");
+  delay(2000);
 
+  // DHT Sensor Setup
+  dht.begin();
+
+  // HX711 Setup
+  scale.begin(HX711_DT_PIN, HX711_SCK_PIN);
+  scale.set_scale(HX711_CALIBRATION_FACTOR); // Set the correct calibration factor after taring
+
+  // Pump Setup
+  pinMode(PUMP_PIN, OUTPUT);
+  digitalWrite(PUMP_PIN, LOW); // Ensure pump is off initially
+  
+  // Button Setup
+  pinMode(TARE_BUTTON_PIN, INPUT_PULLUP); // Enable internal pull-up resistor
+  pinMode(TIMER_BUTTON_PIN, INPUT_PULLUP); // Timer button
 }
 
 void loop() {
-  onButton();
-}
+  // Read pH Sensor
+  int analogValue = analogRead(PH_SENSOR_PIN);
+  float voltage = (analogValue / ADC_RESOLUTION) * VOLTAGE_REF;
+  float pHValue = calculatePH(voltage) + CALIBRATION_OFFSET;
 
+  // Read Temperature from DHT11
+  float temperature = dht.readTemperature();
 
-
-void onButton() {
-  //reads the state of the on button (is it pushed down or not?)
-  int onButtonState = digitalRead(onButtonPin);
-
-  // if the button has changed state then checks whether it has been pressed and records the time it was pressed
-  if (onButtonState != onButtonPrevState) {
-    if (onButtonState == HIGH) {
-      onButtonReleased = false;
-      onButtonPressedAt = millis();
-    }
-    else {
-      onButtonReleaseed = true;
-    }
-    onButtonPrevState = onButtonState;
-  }
-
-  if (onButtonReleased == true) {
-    after5sec();
-    onButtonReleased = false;
-    onButtonPressedAt = 0;
-  }
-}
-
-
-
-
-
-void after5sec() {
-  //if the button is pressed for 5+ seconds then the box is turned on/off
-  long diff = millis() - onButonPressedAt;
-  if (diff > 5000) {
-    if (onButtonState == LOW){
-      digitalWrite(onButtonPin, HIGH);
-    }
-    else {
-      digitalWrite(onButtonPin, LOW);
+  // Handle Tare Button
+  if (digitalRead(TARE_BUTTON_PIN) == LOW) {
+    delay(200); // Debounce delay
+    if (digitalRead(TARE_BUTTON_PIN) == LOW) { // Confirm still pressed
+      Serial.println("Tare Button Pressed, resetting scale...");
+      scale.tare(); // Reset scale to zero
+      Serial.println("Scale tared successfully.");
+      lcd.clear();
+      lcd.setCursor(0, 1);
+      lcd.print("Scale Tared");
+      delay(2000);
     }
   }
 
-  if (diff < 2000) {
-    unsigned long timeSinceStart = 0;
-
-    
+  // Handle Timer Button
+  if (digitalRead(TIMER_BUTTON_PIN) == LOW) {
+    delay(200); // Debounce delay
+    if (digitalRead(TIMER_BUTTON_PIN) == LOW) { // Confirm still pressed
+      if (!timerRunning) {
+        Serial.println("Timer Button Pressed, starting day counter...");
+        timerStart = millis(); // Start timer
+        timerRunning = true;
+        lcd.clear();
+        lcd.setCursor(0, 1);
+        lcd.print("Ferment Started");
+        lcd.setCursor(0, 2);
+        lcd.print("Happy Fermenting!");
+        delay(2000);
+      } else {
+        Serial.println("Timer Button Pressed, stopping day counter...");
+        timerRunning = false;
+        timerStart = 0; // Reset timer
+        lcd.clear();
+        lcd.setCursor(0, 1);
+        lcd.print("Ferment Stopped");
+        delay(2000);
+      }
+    }
   }
-}
 
-
-
-const int tareWeightPin = 6;
-byte tareButtonState = 0;
-
-void tareWeight() {
-  int tareState = digitalread(tareWeightPin);
-
-  if (tareState != tareButtonState){
-    //reset weight
+  // Read Weight from HX711 and apply minimum threshold
+  float weight = scale.get_units(10); // Get current weight
+  if (weight < MINIMUM_WEIGHT) {
+    weight = 0.0; // Ignore small weights
   }
+
+  // Calculate Salt Amount (2% of weight, rounded to nearest 0.5g)
+  float saltAmount = ceil((weight * 0.02) / 0.5) * 0.5;
+
+  // Calculate Days Since Timer Start
+  unsigned long elapsedMillis = millis() - timerStart;
+  int elapsedDays = timerRunning ? elapsedMillis / 86400000 : 0; // Convert milliseconds to days
+
+  // Display on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("pH: "); lcd.print(pHValue, 2);
+  lcd.setCursor(11, 0);
+  lcd.print("Days: "); lcd.print(elapsedDays);
   
+  lcd.setCursor(0, 1);
+  lcd.print("Weight: "); lcd.print(weight, 1); lcd.print(" g");
+  lcd.setCursor(0, 2);
+  lcd.print("Add Salt: "); lcd.print(saltAmount, 1); lcd.print(" g");
+  lcd.setCursor(0, 3);
+  lcd.print("Temp: "); lcd.print(temperature, 1); lcd.print(" C");
+
+  delay(2000); // Wait 2 seconds before next reading
 }
