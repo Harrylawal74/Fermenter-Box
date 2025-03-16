@@ -32,4 +32,6 @@ void onOff(){
       }
     }
   }
+
+  return systemPower;
 }
