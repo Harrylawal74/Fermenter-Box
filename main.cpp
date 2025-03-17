@@ -194,6 +194,8 @@ void timerButton(){
         lcd.setCursor(0, 1);
         lcd.print("Ferment Stopped");
         delay(1500);
+
+        //return to ferment setup after time stops
         fermentSetup();
       }
     }
