@@ -1,10 +1,10 @@
- #include <Wire.h>
+#include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
 #include "HX711.h" // Library for analog HX711
 
 
-#define POWER_BUTTON_PIN 6
+#define POWER_BUTTON_PIN 6      // Pin for power button
 #define PH_SENSOR_PIN A0        // Analog pin connected to pH sensor
 #define VOLTAGE_REF 5.0         // Reference voltage for ADC
 #define ADC_RESOLUTION 1024.0   // 10-bit ADC resolution
