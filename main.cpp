@@ -117,7 +117,7 @@ void loop() {
    
 
     //Seconds
-    //int elapsedDays = timerRunning ? elapsedMillis / 1000 : 0; // Convert milliseconds to days
+    //int elapsedDays = timerRunning ? elapsedMillis / 1000 : 0; // Convert milliseconds to seconds
 
 
       // Display on LCD
