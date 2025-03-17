@@ -88,31 +88,13 @@ void setup() {
 void loop() {
   onOff();
   if (systemPower == true){
-    // Read pH Sensor
-    int analogValue = analogRead(PH_SENSOR_PIN);
-    float voltage = (analogValue / ADC_RESOLUTION) * VOLTAGE_REF;
-    float pHValue = calculatePH(voltage) + CALIBRATION_OFFSET;
+    readSensors();
 
-    // Read Temperature from DHT11
-    float temperature = dht.readTemperature();
-
-
-    tareButton();
-    timerButton();
-
-    // Read Weight from HX711 and apply minimum threshold
-    float weight = scale.get_units(10); // Get current weight
-    if (weight < MINIMUM_WEIGHT) {
-      weight = 0.0; // Ignore small weights
-    }
-
-
-      // Calculate Salt Amount (2% of weight, rounded to nearest 0.5g)
+    // Calculate Salt Amount (2% of weight, rounded to nearest 0.5g)
     float saltAmount = ceil((weight * 0.02) / 0.5) * 0.5;
 
     // Calculate Days Since Timer Start
     unsigned long elapsedMillis = millis() - timerStart;
-   
     int elapsedDays = timerRunning ? elapsedMillis / 86400000 : 0; // Convert milliseconds to days
    
 
@@ -120,7 +102,7 @@ void loop() {
     //int elapsedDays = timerRunning ? elapsedMillis / 1000 : 0; // Convert milliseconds to seconds
 
 
-      // Display on LCD
+    // Display on LCD
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("pH: "); lcd.print(pHValue, 2);
@@ -234,14 +216,29 @@ void loading(){
     lcd.print(" ");
     lcd.setCursor(11, 3);
     lcd.print(" ");
-    delay(200);
-
-
-
-
-   
-   
+    delay(200); 
    
   }
   lcd.clear();
+}
+
+
+void readSensors(){
+    // Read pH Sensor
+    int analogValue = analogRead(PH_SENSOR_PIN);
+    float voltage = (analogValue / ADC_RESOLUTION) * VOLTAGE_REF;
+    float pHValue = calculatePH(voltage) + CALIBRATION_OFFSET;
+
+    // Read Temperature from DHT11
+    float temperature = dht.readTemperature();
+
+
+    tareButton();
+    timerButton();
+
+    // Read Weight from HX711 and apply minimum threshold
+    float weight = scale.get_units(10); // Get current weight
+    if (weight < MINIMUM_WEIGHT) {
+      weight = 0.0; // Ignore small weights
+    }
 }
