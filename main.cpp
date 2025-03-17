@@ -88,8 +88,14 @@ void setup() {
 void loop() {
   onOff();
   if (systemPower == true){
-    readSensors();
+    
+    readSensors(); //constantly reading sensors
 
+    //constantly checking whether buttons have been pressed
+    tareButton(); 
+    timerButton();
+    conditionsAlert();
+    
     // Calculate Salt Amount (2% of weight, rounded to nearest 0.5g)
     float saltAmount = ceil((weight * 0.02) / 0.5) * 0.5;
 
@@ -102,19 +108,6 @@ void loop() {
     //int elapsedDays = timerRunning ? elapsedMillis / 1000 : 0; // Convert milliseconds to seconds
 
 
-    // Display on LCD
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("pH: "); lcd.print(pHValue, 2);
-    lcd.setCursor(11, 0);
-    lcd.print("Days: "); lcd.print(elapsedDays);
-   
-    lcd.setCursor(0, 1);
-    lcd.print("Weight: "); lcd.print(weight, 1); lcd.print(" g");
-    lcd.setCursor(0, 2);
-    lcd.print("Add Salt: "); lcd.print(saltAmount, 1); lcd.print(" g");
-    lcd.setCursor(0, 3);
-    lcd.print("Temp: "); lcd.print(temperature, 1); lcd.print(" C");
 
   }
 }
@@ -182,6 +175,17 @@ void timerButton(){
         lcd.setCursor(0, 2);
         lcd.print("Happy Fermenting!");
         delay(1500);
+
+        //Display while fermenting 
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("pH: "); lcd.print(pHValue, 2);
+        lcd.setCursor(0, 7);
+        lcd.print("Temp: "); lcd.print(temperature, 1); lcd.print(" C");
+        lcd.setCursor(1, 9);
+        lcd.print("Days: "); lcd.print(elapsedDays);
+        
+        
       } else {
         Serial.println("Timer Button Pressed, stopping day counter...");
         timerRunning = false;
@@ -195,6 +199,7 @@ void timerButton(){
   }
 }
 
+//loading animation
 void loading(){
   for (int i = 0; i < 2; i++){
     lcd.setCursor(9, 3);
@@ -223,6 +228,7 @@ void loading(){
 }
 
 
+
 void readSensors(){
     // Read pH Sensor
     int analogValue = analogRead(PH_SENSOR_PIN);
@@ -233,12 +239,64 @@ void readSensors(){
     float temperature = dht.readTemperature();
 
 
-    tareButton();
-    timerButton();
 
     // Read Weight from HX711 and apply minimum threshold
     float weight = scale.get_units(10); // Get current weight
     if (weight < MINIMUM_WEIGHT) {
       weight = 0.0; // Ignore small weights
     }
+}
+
+
+void fermentSetup(){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Weight: "); lcd.print(weight, 1); lcd.print(" g");
+  lcd.setCursor(0, 1);
+  lcd.print("Add Salt: "); lcd.print(saltAmount, 1); lcd.print(" g");
+}
+
+
+
+
+void conditionsAlert(){
+
+  // ph greater than 5 error message. 5 seconds
+  if (pHValue > 5){
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("pH: "); lcd.print(pHValue, 2); 
+    lcd.setCursor(1,0);
+    lcd.print("Too high!!!");
+    delay(5000);
+  }
+
+  //Lower than 16 degrees error message. 5 seconds
+  if (temperature < 16){
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Temp: "); lcd.print(temperature, 1); lcd.print(" C");
+    lcd.setCursor(1,0);
+    lcd.print("Too cold!!!");
+    delay(5000);
+  }
+
+  // Greater than 25 degrees error message. 5 seconds
+  if (temperature > 25){
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Temp: "); lcd.print(temperature, 1); lcd.print(" C");
+    lcd.setCursor(1,0);
+    lcd.print("Too hot!!!");
+    delay(5000);
+  }
+
+  //Returns to fermenting screen after error message has displayed for 5 seconds 
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("pH: "); lcd.print(pHValue, 2);
+  lcd.setCursor(0, 7);
+  lcd.print("Temp: "); lcd.print(temperature, 1); lcd.print(" C");
+  lcd.setCursor(1, 9);
+  lcd.print("Days: "); lcd.print(elapsedDays);
 }
